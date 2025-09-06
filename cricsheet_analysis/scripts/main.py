@@ -15,7 +15,7 @@ from pptx.util import Inches, Pt
 # ----------------------
 st.set_page_config(page_title="🏏 Cricsheet Analytics Suite", layout="wide")
 st.title("🏏 Cricsheet Analytics Suite — EDA • Player/Team Insights • Exports")
-DB_PATH = os.environ.get("CRICSHEET_DB", "cricket.db")
+DB_PATH = os.environ.get("CRICSHEET_DB", "scripts/cricket.db")
 
 # ----------------------
 # Utilities
@@ -46,14 +46,32 @@ def load_matches(fmt: str) -> pd.DataFrame:
 def load_batting(fmt: str) -> pd.DataFrame:
     tbl = f"batting_stats_{fmt}"
     if tbl not in get_tables():
-        return pd.DataFrame(columns=["batter","runs","balls","fours","sixes","strike_rate"]) 
+        return pd.DataFrame(columns=["batter","runs","ball","fours","sixes","strike_rate"]) 
     return read_sql(f"SELECT * FROM {tbl}")
+
+# def load_batting(fmt: str) -> pd.DataFrame:
+#     conn = sqlite3.connect("cricket.db")
+#     query = f"""
+#     SELECT 
+#         batsman AS batter,
+#         SUM(runs_batsman) AS runs,
+#         COUNT(*) AS balls,
+#         SUM(CASE WHEN runs_batsman = 4 THEN 1 ELSE 0 END) AS fours,
+#         SUM(CASE WHEN runs_batsman = 6 THEN 1 ELSE 0 END) AS sixes,
+#         ROUND(CAST(SUM(runs_batsman) AS FLOAT) / COUNT(*) * 100, 2) AS strike_rate
+#     FROM {fmt}_matches
+#     GROUP BY batsman
+#     ORDER BY runs DESC;
+#     """
+#     df = pd.read_sql(query, conn)
+#     conn.close()
+#     return df
 
 @st.cache_data(show_spinner=False)
 def load_bowling(fmt: str) -> pd.DataFrame:
     tbl = f"bowling_stats_{fmt}"
     if tbl not in get_tables():
-        return pd.DataFrame(columns=["bowler","balls","runs_conceded","wickets","overs","economy"]) 
+        return pd.DataFrame(columns=["bowler","ball","runs_conceded","wicket","overs","economy"]) 
     return read_sql(f"SELECT * FROM {tbl}")
 
 @st.cache_data(show_spinner=False)
@@ -98,7 +116,7 @@ with st.sidebar:
 
     teams_series = matches_df['teams'].dropna().apply(expand_teams)
     all_teams = sorted({t for lst in teams_series for t in lst}) if not matches_df.empty else []
-    team_filter = st.multiselect("Teams", options=all_teams, default=[])
+    # team_filter = st.multiselect("Teams", options=all_teams, default=[])
 
     st.markdown("---")
     st.caption(f"Using database: **{DB_PATH}**")
@@ -106,9 +124,9 @@ with st.sidebar:
 # Apply filters to matches_df for EDA views
 if not matches_df.empty and year_range:
     matches_df = matches_df[(matches_df['year'].astype(int) >= year_range[0]) & (matches_df['year'].astype(int) <= year_range[1])]
-if team_filter:
-    mask = matches_df['teams'].apply(lambda s: any(t in s for t in team_filter))
-    matches_df = matches_df[mask]
+# if team_filter:
+#     mask = matches_df['teams'].apply(lambda s: any(t in s for t in team_filter))
+#     matches_df = matches_df[mask]
 
 bat_df = load_batting(fmt)
 bowl_df = load_bowling(fmt)
@@ -207,30 +225,30 @@ with t3:
         c1, c2 = st.columns(2)
         # Batting leaders
         if not bat_df.empty:
-            min_balls = c1.slider("Min Balls (Batting)", 0, int(bat_df['balls'].max()) if 'balls' in bat_df.columns and not bat_df.empty else 1000, 300)
-            bat_top = bat_df[bat_df['balls']>=min_balls].sort_values('runs', ascending=False).head(15)
+            min_balls = c1.slider("Min Balls (Batting)", 0, int(bat_df['ball'].max()) if 'ball' in bat_df.columns and not bat_df.empty else 1000, 300)
+            bat_top = bat_df[bat_df['ball']>=min_balls].sort_values('runs', ascending=False).head(15)
             fig = px.bar(bat_top, x='runs', y='batter', orientation='h', title='Top Run-Scorers')
             fig.update_layout(yaxis=dict(autorange='reversed'))
             c1.plotly_chart(fig, use_container_width=True)
 
             # Strike rate leaders
-            sr_top = bat_df[bat_df['balls']>=min_balls].sort_values('strike_rate', ascending=False).head(15)
+            sr_top = bat_df[bat_df['ball']>=min_balls].sort_values('strike_rate', ascending=False).head(15)
             figsr = px.bar(sr_top, x='strike_rate', y='batter', orientation='h', title='Top Strike Rates')
             figsr.update_layout(yaxis=dict(autorange='reversed'))
             c1.plotly_chart(figsr, use_container_width=True)
 
         # Bowling leaders
         if not bowl_df.empty:
-            min_balls_b = c2.slider("Min Balls (Bowling)", 0, int(bowl_df['balls'].max()) if 'balls' in bowl_df.columns and not bowl_df.empty else 1000, 300)
-            bowl_top = bowl_df[bowl_df['balls']>=min_balls_b].sort_values('wickets', ascending=False).head(15)
-            figb = px.bar(bowl_top, x='wickets', y='bowler', orientation='h', title='Top Wicket-Takers')
+            min_balls_b = c2.slider("Min Balls (Bowling)", 0, int(bowl_df['ball'].max()) if 'ball' in bowl_df.columns and not bowl_df.empty else 1000, 300)
+            bowl_top = bowl_df[bowl_df['ball']>=min_balls_b].sort_values('wicket', ascending=False).head(15)
+            figb = px.bar(bowl_top, x='wicket', y='bowler', orientation='h', title='Top Wicket-Takers')
             figb.update_layout(yaxis=dict(autorange='reversed'))
             c2.plotly_chart(figb, use_container_width=True)
 
             # Wickets vs Economy
-            scat = bowl_df[bowl_df['balls']>=min_balls_b]
+            scat = bowl_df[bowl_df['ball']>=min_balls_b]
             if not scat.empty:
-                figsc = px.scatter(scat, x='wickets', y='economy', hover_name='bowler', title='Wickets vs Economy')
+                figsc = px.scatter(scat, x='wicket', y='economy', hover_name='bowler', title='Wickets vs Economy')
                 c2.plotly_chart(figsc, use_container_width=True)
 
 # ----------------------
