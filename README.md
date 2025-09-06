@@ -74,19 +74,12 @@ pip install -r requirements.txt
    python scripts/database.py
    ```
 
-4. **Run queries.py** → Executes 20 SQL queries for insights.
+4. **Run main.py** → Build interactive dashboards..
 
    ```bash
-   python scripts/queries.py
+   streamlit run scripts/main.py
    ```
-
-5. **Run eda.py** → Generates Python plots (Matplotlib, Seaborn, Plotly).
-
-   ```bash
-   python scripts/eda.py
-   ```
-
-6. **Connect SQLite DB to Power BI** → Build interactive dashboards.
+5. **Connect SQLite DB to Power BI** → Build interactive dashboards.
 
 ---
 
